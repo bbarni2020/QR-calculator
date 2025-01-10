@@ -11,11 +11,14 @@ def minify_html(html_content):
     return minify(html_content, remove_empty_space=True)
 
 
+import qrcode
+from PIL import Image
+
 def generate_qr_code(data_url, logo_path=None):
-    """Generates QR code from the data URL and adds logo (optional)."""
+    """Generates a QR code for the given URL and optionally overlays a logo."""
     qr = qrcode.QRCode(
         version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,  # Higher error correction for logo
         box_size=10,
         border=4,
     )
@@ -23,17 +26,24 @@ def generate_qr_code(data_url, logo_path=None):
     qr.make(fit=True)
 
     # Generate QR code image
-    qr_img = qr.make_image(fill="black", back_color="white")
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
     if logo_path:
-        # Overlay logo in the center of the QR code
+        # Add a logo in the center of the QR code
         logo = Image.open(logo_path)
-        logo = logo.resize(
-            (50, 50))  # Resize logo to fit in the QR code center
-        qr_img.paste(logo, (int((qr_img.size[0] - logo.size[0]) / 2),
-                            int((qr_img.size[1] - logo.size[1]) / 2)))
+        # Resize logo to fit within the QR code
+        logo_size = min(qr_img.size) // 5  # Adjust the size proportionally
+        logo = logo.resize((logo_size, logo_size), Image.ANTIALIAS)
+
+        # Calculate position to center the logo
+        x_pos = (qr_img.size[0] - logo.size[0]) // 2
+        y_pos = (qr_img.size[1] - logo.size[1]) // 2
+
+        # Paste the logo onto the QR code with transparency mask
+        qr_img.paste(logo, (x_pos, y_pos), mask=logo if logo.mode == 'RGBA' else None)
 
     return qr_img
+
 
 
 def save_qr_code_image(qr_img, output_path):
